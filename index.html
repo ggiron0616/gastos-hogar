@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gastos del Hogar</title>
+  <meta name="theme-color" content="#12403C">
+  <link rel="icon" type="image/svg+xml" href="assets/logo-icon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Gastos">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="#/panel" aria-label="Gastos del Hogar - inicio"><img src="assets/logo-vertical.svg" alt="Gastos del Hogar"></a>
+    <a id="sync-chip" class="sync-chip" href="#/ajustes" style="display:none"></a>
+  </header>
+  <nav class="nav" id="nav"></nav>
+  <div id="aviso" class="aviso" style="display:none"></div>
+  <main id="view"><div class="card empty"><h3>Cargando…</h3><p>Preparando tus gastos.</p></div></main>
+  <div class="modal" id="modal"><div class="box" id="modal-box"></div></div>
+  <input type="file" id="file-input" accept="image/*,.heic" multiple hidden>
+  <div id="dbg" style="display:none;position:fixed;left:0;right:0;bottom:0;max-height:48vh;overflow:auto;background:rgba(0,0,0,.88);color:#fff;font:12px/1.35 monospace;padding:8px;z-index:99999;white-space:pre-wrap"></div>
+
+  <script>
+    /* Arranque: carga cada archivo de la app EN ORDEN y reintenta si la conexión pierde alguno (túnel, Wi-Fi débil...) */
+    (function () {
+      var dbg = document.getElementById('dbg'), debug = location.search.indexOf('debug') >= 0;
+      if (debug) dbg.style.display = 'block';
+      window.__log = function (m) { if (debug) { dbg.textContent += m + '\n'; dbg.scrollTop = 1e9; } };
+      var SCRIPTS = ['modo.js', 'vendor/chart.umd.js', 'vendor/tesseract.min.js', 'vendor/qrcode.js', 'js/util.js', 'js/db.js', 'js/seed.js', 'js/extract.js', 'js/charts.js', 'js/views.js', 'js/pagos.js', 'js/sync.js', 'js/app.js'];
+      function load(src, tries) {
+        return new Promise(function (resolve, reject) {
+          var s = document.createElement('script');
+          s.src = src + (tries < 5 ? '?r=' + Date.now() : ''); s.async = false;
+          s.onload = function () { window.__log('ok  ' + src + (tries < 5 ? ' (reintento ' + (5 - tries) + ')' : '')); resolve(); };
+          s.onerror = function () {
+            window.__log('FALLO ' + src + (tries > 1 ? ' - reintentando' : ' - se rindió'));
+            s.parentNode && s.parentNode.removeChild(s);
+            if (tries > 1) setTimeout(function () { load(src, tries - 1).then(resolve, reject); }, 400);
+            else reject(new Error('No se pudo cargar ' + src));
+          };
+          document.head.appendChild(s);
+        });
+      }
+      SCRIPTS.reduce(function (p, f) { return p.then(function () { return load(f, 5); }); }, Promise.resolve()).catch(function (e) {
+        document.getElementById('view').innerHTML = '<div class="card empty"><h3>No se pudo cargar la app</h3><p>' + String(e.message).replace(/[<>&]/g, '') + '</p><p>Revisa la conexión y vuelve a intentarlo.</p><p><button class="btn primary" onclick="location.reload()">Recargar</button></p></div>';
+      });
+    })();
+  </script>
+</body>
+</html>
